@@ -1,5 +1,6 @@
 package net.husnikamil.moviehouse;
 
+import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -7,6 +8,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -61,6 +63,29 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.OnIt
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu,menu);
+
+        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView = (SearchView) menu.findItem(R.id.action_search)
+                .getActionView();
+        if (null != searchView) {
+            searchView.setSearchableInfo(searchManager
+                    .getSearchableInfo(getComponentName()));
+            searchView.setIconifiedByDefault(true);
+        }
+        SearchView.OnQueryTextListener queryTextListener = new SearchView.OnQueryTextListener() {
+            public boolean onQueryTextChange(String newText) {
+//                ambilDataSearch(newText);
+                return true;
+            }
+
+            public boolean onQueryTextSubmit(String query) {
+                //Here u can get the value "query" which is entered in the search box.
+                ambilDataSearch(query);
+                return false;
+            }
+        };
+        searchView.setOnQueryTextListener(queryTextListener);
+
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -86,6 +111,9 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.OnIt
 
             case  R.id.menu_upComing:ambilDataUpComing();
             break;
+
+            case R.id.action_search:
+            return false;
         }
 //        if (item.getItemId() == R.id.sync_menu){
 //           Toast.makeText(this,"Aw...!", Toast.LENGTH_SHORT).show();
@@ -214,6 +242,47 @@ public class MainActivity extends AppCompatActivity implements MovieAdapter.OnIt
         TmdbClient client =  retrofit.create(TmdbClient.class);
 
         Call<MovieData> call = client.getUpComing("2105eeb16c2ac67a002123c95e40a86b");
+        call.enqueue(new Callback<MovieData>() {
+            //jika proses pemintaan data berhasil
+            @Override
+            public void onResponse(Call<MovieData> call, Response<MovieData> response) {
+                MovieData movieData = response.body();
+                List<Movie> results = movieData.results;
+                adapter.setDatafile(new ArrayList<Movie>(results));
+                pbMovie.setVisibility(View.INVISIBLE);
+                rvMovies.setVisibility(View.VISIBLE);
+            }
+            //jika gagal
+            @Override
+            public void onFailure(Call<MovieData> call, Throwable t) {
+                Toast.makeText(MainActivity.this,"gagal coy",Toast.LENGTH_SHORT).show();
+                pbMovie.setVisibility(View.VISIBLE);
+                rvMovies.setVisibility(View.INVISIBLE);
+            }
+        });
+
+        getSupportActionBar().setTitle("Up coming movies");
+        SharedPreferences preferences = getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("last_seen_key",2);
+        editor.commit();
+
+    }
+
+    private void ambilDataSearch(String query) {
+
+        pbMovie.setVisibility(View.VISIBLE);
+        rvMovies.setVisibility(View.INVISIBLE);
+
+        String TMDB_BASE_URL="https://api.themoviedb.org";
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(TMDB_BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        TmdbClient client =  retrofit.create(TmdbClient.class);
+
+        Call<MovieData> call = client.getSearch("2105eeb16c2ac67a002123c95e40a86b", query);
         call.enqueue(new Callback<MovieData>() {
             //jika proses pemintaan data berhasil
             @Override

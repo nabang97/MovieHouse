@@ -13,4 +13,8 @@ public interface TmdbClient {
     @GET("/3/movie/upcoming")
     Call<MovieData> getUpComing(@Query("api_key") String api_key);
 
+    @GET("3/search/movie")
+    Call<MovieData> getSearch(@Query("api_key") String api_key,
+                                    @Query("query") String query);
+
 }
